@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# for numpad old
+#/usr/bin/xinit /opt/drinkomatic/term_with_micropay.sh -- /usr/bin/Xephyr -ac +kb -screen 1024x768 -br -fullscreen -reset -keybd evdev,,device=/dev/input/by-id/usb-USB_KB_USB_KB-event-kbd,xkbmodel=evdev,xkblayout=us 2> /dev/null :1
+
+# for internal keyboard old
+#/usr/bin/xinit /opt/drinkomatic/term_with_micropay.sh -- /usr/bin/Xephyr -ac +kb -screen 1024x768 -br -fullscreen -reset -keybd evdev,,device=/dev/input/by-path/platform-i8042-serio-0-event-kbd,xkbmodel=evdev,xkblayout=us 2> /dev/null :1
+
+# for numpad
+#DISPLAY=:0 /usr/bin/numlockx on
+/usr/bin/xinit /opt/drinkomatic/term_with_micropay.sh -- /usr/bin/Xephyr -ac +kb -screen 1024x768 -br -fullscreen -reset -keybd evdev,,device=/dev/input/by-id/usb-USB_KB_USB_KB-event-kbd,xkbmodel=evdev,xkblayout=us -mouse evdev,3,,device=/dev/null -host-cursor 2> /dev/null :1
+
+# for internal keyboard
+#/usr/bin/xinit /opt/drinkomatic/term_with_micropay.sh -- /usr/bin/Xephyr -ac +kb -screen 1024x768 -br -fullscreen -reset -keybd evdev,,device=/dev/input/by-path/platform-i8042-serio-0-event-kbd,xkbmodel=evdev,xkblayout=us -mouse evdev,3,,device=/dev/null -host-cursor 2> /dev/null :1
+

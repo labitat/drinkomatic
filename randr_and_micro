@@ -1,0 +1,11 @@
+#!/bin/sh
+
+xrandr -o right
+
+while [ 1 ] 
+do
+  /opt/drinkomatic/micropay.py 2> /opt/drinkomatic/micropay.log
+  cat /opt/drinkomatic/micropay.log | mutt -s "Bugreport foodputer" bugreport@labitat.dk
+done
+
+#sleep 15
