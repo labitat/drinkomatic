@@ -1,3 +1,14 @@
-create table accounts (id integer primary key autoincrement, hash varchar(40) unique, member varchar(60), balance float);
-create table products (id integer primary key autoincrement, barcode varchar(40) unique, price float, name varchar(255));
+CREATE TABLE accounts (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	hash VARCHAR(40) UNIQUE,
+	member VARCHAR(60),
+	balance FLOAT
+);
+
+CREATE TABLE products (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	barcode VARCHAR(40) UNIQUE,
+	price FLOAT,
+	name VARCHAR(255)
+);
 
