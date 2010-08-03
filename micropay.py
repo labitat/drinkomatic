@@ -124,11 +124,10 @@ class CardThread(threading.Thread):
 		global card_cond
 		global last_active_time
 
-		t = (card_hash,)
 		self.cur.execute(
 			'SELECT balance, member '
 			'FROM accounts '
-			'WHERE hash = ?', t)
+			'WHERE hash = ?', (card_hash,))
 
 		r = self.cur.fetchone()
 
@@ -178,11 +177,10 @@ class BarcodeThread(threading.Thread):
 	def buy(self, barcode):
 		global card_cond
 
-		t = (barcode,)
 		self.cur.execute(
 			'SELECT price, name '
 			'FROM products '
-			'WHERE barcode = ?', t)
+			'WHERE barcode = ?', (barcode,))
 
 		r = self.cur.fetchone()
 
@@ -208,17 +206,15 @@ class BarcodeThread(threading.Thread):
 			print 'Price  : %.2f\r' % price
 
 		if h != '':
-			t = (price, h)
 			self.cur.execute(
 				'UPDATE accounts '
 				'SET balance = balance - ? '
-				'WHERE hash = ?', t)
+				'WHERE hash = ?', (price, h))
 
-			t = (h,)
 			self.cur.execute(
 				'SELECT balance '
 				'FROM accounts '
-				'WHERE hash = ?', t)
+				'WHERE hash = ?', (h,))
 
 			r = self.cur.fetchone()
 
@@ -244,11 +240,10 @@ def add_money():
 		enable_barcode()
 		return
 	else:
-		t = (h,)
 		cursor.execute(
 			'SELECT balance '
 			'FROM accounts '
-			'WHERE hash = ?', t)
+			'WHERE hash = ?', (h,))
 
 		r = cursor.fetchone()
 
@@ -268,17 +263,15 @@ def add_money():
 
 		amount = int(str)
 
-		t = (amount, h)
 		cursor.execute(
 			'UPDATE accounts '
 			'SET balance = balance + ? '
-			'WHERE hash = ?', t)
+			'WHERE hash = ?', (amount, h))
 
-		t = (h,)
 		cursor.execute(
 			'SELECT balance '
 			'FROM accounts '
-			'WHERE hash = ?', t)
+			'WHERE hash = ?', (h,))
 
 		r = cursor.fetchone()
 		print 'Updated balance: %.2f' % r[0]
@@ -334,11 +327,10 @@ def new_customer():
 	amount = int(str)
 
 	print 'Amount parsed as DKK %d\r' % amount
-	t = (h, name, amount)
 	try:
 		cursor.execute(
 			'INSERT INTO accounts (hash, member, balance) '
-			'VALUES (?,?,?)', t)
+			'VALUES (?,?,?)', (h, name, amount))
 
 	except sqlite3.IntegrityError:
 		print 'ERROR: Card already exists in database\r'
@@ -420,10 +412,9 @@ def new_product():
 	print 'Price parsed as DKK %d\r' % amount
 
 	try:
-		t = (name, amount, barcode)
 		cursor.execute(
 			'INSERT INTO products (name,price,barcode) '
-			'VALUES (?,?,?)', t)
+			'VALUES (?,?,?)', (name, amount, barcode))
 
 	except sqlite3.IntegrityError:
 		print 'ERROR: Product already exists in database\r'
@@ -473,11 +464,10 @@ def update_product():
 
 	print 'Barcode read OK: %s\r' % barcode
 
-	t = (barcode,)
 	cursor.execute(
 		'SELECT name, price '
 		'FROM products '
-		'WHERE barcode = ?', t)
+		'WHERE barcode = ?', (barcode,))
 
 	r = cursor.fetchone()
 	if r == None:
@@ -519,11 +509,10 @@ def update_product():
 	print 'Price parsed as DKK %d\r' % amount
 
 	try:
-		t = (name, amount, barcode)
 		cursor.execute(
 			'UPDATE products '
 			'SET name = ?, price = ? '
-			'WHERE barcode = ?', t)
+			'WHERE barcode = ?', (name, amount, barcode))
 
 	except sqlite3.IntegrityError:
 		print 'ERROR: Product already exists in database\r'
