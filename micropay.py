@@ -641,3 +641,5 @@ while True:
 		print 'There is no escape!'
 	except KeyboardInterrupt:
 		print 'There is no escape!'
+
+# vim: set ts=4 sw=4 :
