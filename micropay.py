@@ -126,9 +126,9 @@ class CardThread(threading.Thread):
 
 		t = (card_hash,)
 		self.cur.execute(
-			'select balance, member '
-			'from accounts '
-			'where hash = ?', t)
+			'SELECT balance, member '
+			'FROM accounts '
+			'WHERE hash = ?', t)
 
 		r = self.cur.fetchone()
 
@@ -180,9 +180,9 @@ class BarcodeThread(threading.Thread):
 
 		t = (barcode,)
 		self.cur.execute(
-			'select price, name '
-			'from products '
-			'where barcode = ?', t)
+			'SELECT price, name '
+			'FROM products '
+			'WHERE barcode = ?', t)
 
 		r = self.cur.fetchone()
 
@@ -210,15 +210,15 @@ class BarcodeThread(threading.Thread):
 		if h != '':
 			t = (price, h)
 			self.cur.execute(
-				'update accounts '
-				'set balance = balance - ? '
-				'where hash = ?', t)
+				'UPDATE accounts '
+				'SET balance = balance - ? '
+				'WHERE hash = ?', t)
 
 			t = (h,)
 			self.cur.execute(
-				'select balance '
-				'from accounts '
-				'where hash = ?', t)
+				'SELECT balance '
+				'FROM accounts '
+				'WHERE hash = ?', t)
 
 			r = self.cur.fetchone()
 
@@ -246,9 +246,9 @@ def add_money():
 	else:
 		t = (h,)
 		cursor.execute(
-			'select balance '
-			'from accounts '
-			'where hash = ?', t)
+			'SELECT balance '
+			'FROM accounts '
+			'WHERE hash = ?', t)
 
 		r = cursor.fetchone()
 
@@ -270,15 +270,15 @@ def add_money():
 
 		t = (amount, h)
 		cursor.execute(
-			'update accounts '
-			'set balance = balance + ? '
-			'where hash = ?', t)
+			'UPDATE accounts '
+			'SET balance = balance + ? '
+			'WHERE hash = ?', t)
 
 		t = (h,)
 		cursor.execute(
-			'select balance '
-			'from accounts '
-			'where hash = ?', t)
+			'SELECT balance '
+			'FROM accounts '
+			'WHERE hash = ?', t)
 
 		r = cursor.fetchone()
 		print 'Updated balance: %.2f' % r[0]
@@ -337,8 +337,8 @@ def new_customer():
 	t = (h, name, amount)
 	try:
 		cursor.execute(
-			'insert into accounts (hash, member, balance) '
-			'values (?,?,?)', t)
+			'INSERT INTO accounts (hash, member, balance) '
+			'VALUES (?,?,?)', t)
 
 	except sqlite3.IntegrityError:
 		print 'ERROR: Card already exists in database\r'
@@ -422,8 +422,8 @@ def new_product():
 	try:
 		t = (name, amount, barcode)
 		cursor.execute(
-			'insert into products (name,price,barcode) '
-			'values (?,?,?)', t)
+			'INSERT INTO products (name,price,barcode) '
+			'VALUES (?,?,?)', t)
 
 	except sqlite3.IntegrityError:
 		print 'ERROR: Product already exists in database\r'
@@ -475,9 +475,9 @@ def update_product():
 
 	t = (barcode,)
 	cursor.execute(
-		'select name, price '
-		'from products '
-		'where barcode = ?', t)
+		'SELECT name, price '
+		'FROM products '
+		'WHERE barcode = ?', t)
 
 	r = cursor.fetchone()
 	if r == None:
@@ -521,9 +521,9 @@ def update_product():
 	try:
 		t = (name, amount, barcode)
 		cursor.execute(
-			'update products '
-			'set name = ?, price = ? '
-			'where barcode = ?', t)
+			'UPDATE products '
+			'SET name = ?, price = ? '
+			'WHERE barcode = ?', t)
 
 	except sqlite3.IntegrityError:
 		print 'ERROR: Product already exists in database\r'
