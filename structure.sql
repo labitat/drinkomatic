@@ -12,3 +12,9 @@ CREATE TABLE products (
 	name VARCHAR(255)
 );
 
+CREATE TABLE purchases (
+	dt VARCHAR(23),
+	product_id INTEGER,
+	account_id INTEGER,
+	amount FLOAT
+);

@@ -178,7 +178,7 @@ class BarcodeThread(threading.Thread):
 		global card_cond
 
 		self.cur.execute(
-			'SELECT price, name '
+			'SELECT price, name, id '
 			'FROM products '
 			'WHERE barcode = ?', (barcode,))
 
@@ -188,6 +188,18 @@ class BarcodeThread(threading.Thread):
 		h = card_hash
 		last_active_time = time.time()
 		card_cond.release()
+
+		self.cur.execute(
+			'SELECT id '
+			'FROM accounts '
+			'WHERE hash = ?', (h,))
+
+		r2 = self.cur.fetchone()
+		if r2 == None:
+			print 'Unknown user\r'
+			h = ''
+		else:
+			account_id = r2[0]
 
 		print '------------------\r'
 
@@ -202,14 +214,21 @@ class BarcodeThread(threading.Thread):
 		else:
 			price = r[0]
 			product = r[1]
+			product_id = r[2]
 			print 'Product: %s\r' % product
 			print 'Price  : %.2f\r' % price
 
 		if h != '':
+			self.cur.execute('BEGIN')
 			self.cur.execute(
 				'UPDATE accounts '
 				'SET balance = balance - ? '
 				'WHERE hash = ?', (price, h))
+			self.cur.execute(
+				'INSERT INTO purchases (dt, product_id, account_id, amount) '
+				'VALUES (datetime("now"), ?, ?, ?)',
+				(product_id, account_id, price))
+			self.cur.execute('COMMIT')
 
 			self.cur.execute(
 				'SELECT balance '
