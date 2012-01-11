@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 # -*- coding: utf-8 -*-
 
 import sys
@@ -12,7 +12,7 @@ import termios
 import threading
 import re
 
-db = '/opt/drinkomatic/micropay.db'
+db = '/home/drinkomatic/drinkomatic/micropay.db'
 
 conn = sqlite3.connect(db)
 cursor = conn.cursor()
@@ -40,16 +40,25 @@ new_product_barcode = ''
 barcode_enabled = True
 
 
+def readuntil(input, eor):
+	buf = ''
+	while True:
+		tmp = input.read(1)
+		if tmp == eor:
+			break
+		buf += tmp
+	return buf
+
 def read_card():
 	h = hashlib.sha1()
-	card = card_reader.readline(eol=chr(13))
-	h.update(card)
+	card = readuntil(card_reader, "\x0d")
+	h.update(card + "\x0d")
 	card = h.hexdigest().upper()
 	return card
 
 
 def read_barcode():
-	code = barcode_reader.readline(eol=chr(13))
+	code = readuntil(barcode_reader, "\x0d")
 	code = re.sub("[^\d]+", '', code)
 	return code
 
