@@ -220,6 +220,7 @@ class BarcodeThread(threading.Thread):
 		if r == None:
 			print 'Unknown product!\r'
 			print '------------------\r'
+			return
 		else:
 			price = r[0]
 			product = r[1]
