@@ -264,16 +264,14 @@ PROD_EDIT_NAME = {
 
 	barcode = 'PROD_EDIT_NAME',
 
-	keyboard = {
-		[''] = function(product)
-			return 'PROD_EDIT_PRICE', product
-		end,
-		function(name, product) --default
+	keyboard = function(name, product)
+		if name ~= '' then
 			product.name = name
-			print("Type new price (or press enter to keep %.2f DKK):", product.price)
-			return 'PROD_EDIT_PRICE', product
-		end,
-	},
+		end
+
+		print("Type new price (or press enter to keep %.2f DKK):", product.price)
+		return 'PROD_EDIT_PRICE', product
+	end,
 }
 
 PROD_EDIT_PRICE = {
