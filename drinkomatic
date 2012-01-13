@@ -10,4 +10,5 @@ dir="`dirname $0`"
 stty -F"$card" raw -echo -hup 9600
 stty -F"$barcode" raw -echo -hup 9600
 
-exec lem "$dir/drinkomatic.lua" "$db" "$card" "$barcode"
+cd "$dir"
+exec lem drinkomatic.lua "$db" "$card" "$barcode"
