@@ -70,27 +70,29 @@ local function login(hash, id)
 	return 'USER', r[1]
 end
 
+local function product_dump(p)
+	print("-------------------------------------------")
+	print("Product : %s", p[1])
+	print("Price   : %.2f DKK", p[2])
+	print("-------------------------------------------")
+end
+
 --- declare states ---
 
 MAIN = {
 	card = login,
 
 	barcode = function(code)
-		local r = assert(db:fetchone("\z
-			SELECT name, price \z
-			FROM products \z
-			WHERE barcode = ?", code))
+		print("Price check..")
 
+		local r = assert(db:fetchone(
+			"SELECT name, price FROM products	WHERE barcode = ?", code))
 		if r == true then
-			print "Unknown product.."
+			print "Unknown product."
 			return 'MAIN'
 		end
 
-		print("Price check:")
-		print("-------------------------------------------")
-		print("Product : %s", r[1])
-		print("Price   : %.2f DKK", r[2])
-		print("-------------------------------------------")
+		product_dump(r)
 		return 'MAIN'
 	end,
 
@@ -102,8 +104,7 @@ MAIN = {
 			print ""
 			print "* | Print this menu."
 			print "1 | Create new account."
-			print "2 | Create new product."
-			--print "3 | Update product"
+			print "2 | Update or create new product."
 			print "-------------------------------------------"
 			return 'MAIN'
 		end,
@@ -112,8 +113,8 @@ MAIN = {
 			return 'NEWUSER_NAME'
 		end,
 		['2'] = function()
-			print("Scan barcode of new product (or press enter to abort)..")
-			return 'NEWPROD_CODE'
+			print("Scan barcode (or press enter to abort):")
+			return 'PROD_CODE'
 		end,
 		[''] = function()
 			print("ENTAR!")
@@ -127,7 +128,7 @@ MAIN = {
 }
 
 NEWUSER_NAME = {
-	wait = 120,
+	wait = 120, -- allow 2 minutes for typing account name
 	timeout = function()
 		print "Aborted due to inactivity."
 		return 'MAIN'
@@ -179,7 +180,7 @@ NEWUSER_HASH = {
 	end,
 }
 
-NEWPROD_CODE = {
+PROD_CODE = {
 	wait = timeout,
 	timeout = function()
 		print "Aborted due to inactivity."
@@ -189,9 +190,22 @@ NEWPROD_CODE = {
 	card = login,
 
 	barcode = function(code)
-		print("Scanned %s", code)
-		print "Type name of product (or press enter to abort):"
-		return 'NEWPROD_NAME', code
+		print("Scanned: %s", code)
+
+		local r = assert(db:fetchone("\z
+			SELECT id, name, price \z
+			FROM products \z
+			WHERE barcode = ?", code))
+
+		if r == true then
+			print "Not found in database, creating new product."
+			print "Type name of product (or press enter to abort):"
+			return 'PROD_NEW_NAME', code
+		end
+
+		print "Already in database, updating info."
+		print("Type name of product (or press enter to keep '%s'):", r[2])
+		return 'PROD_EDIT_NAME', { id = r[1], name = r[2], price = r[3] }
 	end,
 
 	keyboard = function()
@@ -200,8 +214,8 @@ NEWPROD_CODE = {
 	end,
 }
 
-NEWPROD_NAME = {
-	wait = 120,
+PROD_NEW_NAME = {
+	wait = 120, -- allow 2 minutes for typing product name
 	timeout = function()
 		print "Aborted due to inactivity."
 		return 'MAIN'
@@ -209,7 +223,7 @@ NEWPROD_NAME = {
 
 	card = login,
 
-	barcode = 'NEWPROD_NAME',
+	barcode = 'PROD_NEW_NAME',
 
 	keyboard = {
 		[''] = function()
@@ -218,12 +232,12 @@ NEWPROD_NAME = {
 		end,
 		function(name, code) --default
 			print "Enter price (or press enter to abort):"
-			return 'NEWPROD_PRICE', name, code
+			return 'PROD_NEW_PRICE', name, code
 		end,
 	},
 }
 
-NEWPROD_PRICE = {
+PROD_NEW_PRICE = {
 	wait = timeout,
 	timeout = function()
 		print "Aborted due to inactivity."
@@ -232,7 +246,7 @@ NEWPROD_PRICE = {
 
 	card = login,
 
-	barcode = 'NEWPROD_PRICE',
+	barcode = 'PROD_NEW_PRICE',
 
 	keyboard = {
 		[''] = function()
@@ -243,7 +257,7 @@ NEWPROD_PRICE = {
 			local n = tonumber(price)
 			if not n then
 				print("Unable to parse '%s', try again (or press enter to abort):", price)
-				return 'NEWPROD_PRICE', name, code
+				return 'PROD_NEW_PRICE', name, code
 			end
 
 			print("Creating new product..");
@@ -253,14 +267,77 @@ NEWPROD_PRICE = {
 				VALUES (?, ?, ?)", code, n, name)
 
 			if ok then
-				print "Done."
-			else
 				print("Error creating product: %s", err)
+				return 'MAIN'
 			end
 
+			product_dump(assert(db:fetchone(
+				"SELECT name, price FROM products	WHERE barcode = ?", code)))
 			return 'MAIN'
 		end,
 	},
+}
+
+PROD_EDIT_NAME = {
+	wait = 120, -- allow 2 minutes for typing product name
+	timeout = function()
+		print "Aborted due to inactivity."
+		return 'MAIN'
+	end,
+
+	card = login,
+
+	barcode = 'PROD_EDIT_NAME',
+
+	keyboard = {
+		[''] = function(product)
+			return 'PROD_EDIT_PRICE', product
+		end,
+		function(name, product) --default
+			product.name = name
+			print("Type new price (or press enter to keep %.2f DKK):", product.price)
+			return 'PROD_EDIT_PRICE', product
+		end,
+	},
+}
+
+PROD_EDIT_PRICE = {
+	wait = timeout,
+	timeout = function()
+		print "Aborted due to inactivity."
+		return 'MAIN'
+	end,
+
+	card = login,
+
+	barcode = 'PROD_EDIT_PRICE',
+
+	keyboard = function(price, product)
+		if price ~= '' then
+			local n = tonumber(price)
+			if not n then
+				print("Unable to parse '%s', try again (or press enter to keep %.2f DKK):",
+					price, product.price)
+				return 'PROD_EDIT_PRICE', product
+			end
+		end
+
+		print "Updating product.."
+
+		local ok, err = db:fetchone("\z
+			UPDATE products \z
+			SET name = ?, price = ? \z
+			WHERE id = ?", product.name, product.price, product.id)
+
+		if not ok then
+			print("Error updating product: %s", err)
+			return 'MAIN'
+		end
+
+		product_dump(assert(db:fetchone(
+			"SELECT name, price FROM products WHERE id = ?", product.id)))
+		return 'MAIN'
+	end,
 }
 
 USER = {
