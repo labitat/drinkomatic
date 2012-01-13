@@ -22,6 +22,9 @@ local function exit()
 	utils.exit(1)
 end
 
+--- spawn coroutines to read from     ---
+--- inputs and add to the input queue ---
+
 utils.spawn(function()
 	local stdin = streams.stdin
 	while true do
@@ -46,6 +49,8 @@ utils.spawn(function()
 		input:put{ from = 'barcode', data = line }
 	end
 end)
+
+--- some helper functions ---
 
 local function login(hash, id)
 	local r = assert(db:fetchone("\z
@@ -450,6 +455,10 @@ DEPOSIT = {
 	},
 }
 
+--
+-- This is functions reads from the input queue
+-- and "runs" the state machine
+--
 local function run()
 	local valid_sender = {
 		timeout = true,
