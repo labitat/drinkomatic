@@ -108,8 +108,8 @@ MAIN = {
 			return 'MAIN'
 		end,
 		['1'] = function()
-			print "Swipe card of new user (or press enter to abort).."
-			return 'NEWUSER_HASH'
+			print "Please enter user name (or press enter to abort):"
+			return 'NEWUSER_NAME'
 		end,
 		['2'] = function()
 			print("Scan barcode of new product (or press enter to abort)..")
@@ -124,27 +124,6 @@ MAIN = {
 			return 'MAIN'
 		end,
 	},
-}
-
-NEWUSER_HASH = {
-	wait = timeout,
-	timeout = function()
-		print "Aborted due to inactivity."
-		return 'MAIN'
-	end,
-
-	card = function(hash)
-		print "Card swiped."
-		print "Please enter user name (or press enter to abort):"
-		return 'NEWUSER_NAME', hash
-	end,
-
-	barcode = 'NEWUSER_HASH',
-
-	keyboard = function()
-		print "Aborted."
-		return 'MAIN'
-	end,
 }
 
 NEWUSER_NAME = {
@@ -163,51 +142,41 @@ NEWUSER_NAME = {
 			print "Aborted."
 			return 'MAIN'
 		end,
-		function(name, hash) --default
-			print("Hello %s!", name)
-			print "Please enter your starting deposit (or press enter to abort):"
-			return 'NEWUSER_VALUE', name, hash
+		function(name) --default
+			print("Hello %s! Please swipe your card..", name)
+			return 'NEWUSER_HASH', name
 		end,
 	},
 }
 
-NEWUSER_VALUE = {
+NEWUSER_HASH = {
 	wait = timeout,
 	timeout = function()
 		print "Aborted due to inactivity."
 		return 'MAIN'
 	end,
 
-	card = login,
+	card = function(hash, name)
+		print "Card swiped, thank you! Creating account.."
 
-	barcode = 'NEWUSER_VALUE',
+		local ok, err = db:fetchone("\z
+			INSERT INTO accounts (hash, member, balance) \z
+			VALUES (?, ?, 0.0)", hash, name)
 
-	keyboard = {
-		[''] = function()
-			print "Aborted."
+		if not ok then
+			print("Error creating account: %s", err)
 			return 'MAIN'
-		end,
-		function(value, name, hash) --default
-			local balance = tonumber(value)
-			if not balance then
-				print("Unable to parse '%s', try again (or press enter to abort):", value)
-				return 'NEWUSER_VALUE', name, hash
-			end
+		end
 
-			print "Creating new account.."
+		return login(hash)
+	end,
 
-			local ok, err = db:fetchone("\z
-				INSERT INTO accounts (hash, member, balance) \z
-				VALUES (?, ?, ?)", hash, name, balance)
+	barcode = 'NEWUSER_HASH',
 
-			if not ok then
-				print("Error creating account: %s", err)
-				return 'MAIN'
-			end
-
-			return login(hash)
-		end,
-	},
+	keyboard = function()
+		print "Aborted."
+		return 'MAIN'
+	end,
 }
 
 NEWPROD_CODE = {
