@@ -60,19 +60,19 @@ local function login(hash, id)
 		else
 			print "Unknown card swiped.."
 		end
-		return 'main'
+		return 'MAIN'
 	end
 
 	print("-------------------------------------------")
 	print("Logged in as : %s", r[2])
 	print("Balance      : %.2f DKK", r[3])
 	print("-------------------------------------------")
-	return 'user', r[1]
+	return 'USER', r[1]
 end
 
 --- declare states ---
 
-main = {
+MAIN = {
 	card = login,
 
 	barcode = function(code)
@@ -83,7 +83,7 @@ main = {
 
 		if r == true then
 			print "Unknown product.."
-			return 'main'
+			return 'MAIN'
 		end
 
 		print("Price check:")
@@ -91,7 +91,7 @@ main = {
 		print("Product : %s", r[1])
 		print("Price   : %.2f DKK", r[2])
 		print("-------------------------------------------")
-		return 'main'
+		return 'MAIN'
 	end,
 
 	keyboard = {
@@ -105,93 +105,93 @@ main = {
 			print "2 | Create new product."
 			--print "3 | Update product"
 			print "-------------------------------------------"
-			return 'main'
+			return 'MAIN'
 		end,
 		['1'] = function()
 			print "Swipe card of new user (or press enter to abort).."
-			return 'user_hash'
+			return 'NEWUSER_HASH'
 		end,
 		['2'] = function()
 			print("Scan barcode of new product (or press enter to abort)..")
-			return 'prod_code'
+			return 'NEWPROD_CODE'
 		end,
 		[''] = function()
 			print("ENTAR!")
-			return 'main'
+			return 'MAIN'
 		end,
 		function(cmd) --default
 			print("Unknown command '%s', press '*' for the menu", cmd)
-			return 'main'
+			return 'MAIN'
 		end,
 	},
 }
 
-user_hash = {
+NEWUSER_HASH = {
 	wait = timeout,
 	timeout = function()
 		print "Aborted due to inactivity."
-		return 'main'
+		return 'MAIN'
 	end,
 
 	card = function(hash)
 		print "Card swiped."
 		print "Please enter user name (or press enter to abort):"
-		return 'user_name', hash
+		return 'NEWUSER_NAME', hash
 	end,
 
-	barcode = 'user_hash',
+	barcode = 'NEWUSER_HASH',
 
 	keyboard = function()
 		print "Aborted."
-		return 'main'
+		return 'MAIN'
 	end,
 }
 
-user_name = {
+NEWUSER_NAME = {
 	wait = 120,
 	timeout = function()
 		print "Aborted due to inactivity."
-		return 'main'
+		return 'MAIN'
 	end,
 
 	card = login,
 
-	barcode = 'user_name',
+	barcode = 'NEWUSER_NAME',
 
 	keyboard = {
 		[''] = function()
 			print "Aborted."
-			return 'main'
+			return 'MAIN'
 		end,
 		function(name, hash) --default
 			print("Hello %s!", name)
 			print "Please enter your starting deposit (or press enter to abort):"
-			return 'user_value', name, hash
+			return 'NEWUSER_VALUE', name, hash
 		end,
 	},
 }
 
-user_value = {
+NEWUSER_VALUE = {
 	wait = timeout,
 	timeout = function()
 		print "Aborted due to inactivity."
-		return 'main'
+		return 'MAIN'
 	end,
 
 	card = login,
 
-	barcode = 'user_value',
+	barcode = 'NEWUSER_VALUE',
 
 	keyboard = {
 		[''] = function()
 			print "Aborted."
-			return 'main'
+			return 'MAIN'
 		end,
 		function(value, name, hash) --default
 			local balance = tonumber(value)
 			if not balance then
 				print("Unable to parse '%s', try again (or press enter to abort):", value)
-				return 'user_value', name, hash
+				return 'NEWUSER_VALUE', name, hash
 			end
 
 			print "Creating new account.."
@@ -202,7 +202,7 @@ user_value = {
 
 			if not ok then
 				print("Error creating account: %s", err)
-				return 'main'
+				return 'MAIN'
 			end
 
 			return login(hash)
@@ -210,11 +210,11 @@ user_value = {
 	},
 }
 
-prod_code = {
+NEWPROD_CODE = {
 	wait = timeout,
 	timeout = function()
 		print "Aborted due to inactivity."
-		return 'main'
+		return 'MAIN'
 	end,
 
 	card = login,
@@ -222,59 +222,59 @@ prod_code = {
 	barcode = function(code)
 		print("Scanned %s", code)
 		print "Type name of product (or press enter to abort):"
-		return 'prod_name', code
+		return 'NEWPROD_NAME', code
 	end,
 
 	keyboard = function()
 		print "Aborted."
-		return 'main'
+		return 'MAIN'
 	end,
 }
 
-prod_name = {
+NEWPROD_NAME = {
 	wait = 120,
 	timeout = function()
 		print "Aborted due to inactivity."
-		return 'main'
+		return 'MAIN'
 	end,
 
 	card = login,
 
-	barcode = 'prod_name',
+	barcode = 'NEWPROD_NAME',
 
 	keyboard = {
 		[''] = function()
 			print "Aborted."
-			return 'main'
+			return 'MAIN'
 		end,
 		function(name, code) --default
 			print "Enter price (or press enter to abort):"
-			return 'prod_price', name, code
+			return 'NEWPROD_PRICE', name, code
 		end,
 	},
 }
 
-prod_price = {
+NEWPROD_PRICE = {
 	wait = timeout,
 	timeout = function()
 		print "Aborted due to inactivity."
-		return 'main'
+		return 'MAIN'
 	end,
 
 	card = login,
 
-	barcode = 'prod_price',
+	barcode = 'NEWPROD_PRICE',
 
 	keyboard = {
 		[''] = function()
 			print "Aborted."
-			return 'main'
+			return 'MAIN'
 		end,
 		function(price, name, code) --default
 			local n = tonumber(price)
 			if not n then
 				print("Unable to parse '%s', try again (or press enter to abort):", price)
-				return 'prod_price', name, code
+				return 'NEWPROD_PRICE', name, code
 			end
 
 			print("Creating new product..");
@@ -289,17 +289,17 @@ prod_price = {
 				print("Error creating product: %s", err)
 			end
 
-			return 'main'
+			return 'MAIN'
 		end,
 	},
 }
 
-user = {
+USER = {
 	wait = timeout,
 	timeout = function()
 		clearscreen()
 		print "Logged out due to inactivity."
-		return 'main'
+		return 'MAIN'
 	end,
 
 	card = login,
@@ -312,7 +312,7 @@ user = {
 
 		if r == true then
 			print "Unknown product.."
-			return 'user', id
+			return 'USER', id
 		end
 
 		local pid = r[1]
@@ -331,7 +331,7 @@ user = {
 			"SELECT balance FROM accounts WHERE id = ?", id))
 		print("New balance: %.2f DKK", r[1])
 
-		return 'user', id
+		return 'USER', id
 	end,
 
 	keyboard = {
@@ -344,49 +344,49 @@ user = {
 			print "0 | Log out."
 			print "1 | Add money to card."
 			print "-------------------------------------------"
-			return 'user', id
+			return 'USER', id
 		end,
 		['0'] = function(id)
 			clearscreen()
 			print "Logging out."
-			return 'main'
+			return 'MAIN'
 		end,
 		['1'] = function(id)
 			print "Enter amount (or press enter to abort):"
-			return 'deposit', id
+			return 'DEPOSIT', id
 		end,
 		[''] = function(id)
 			print "ENTAR!"
-			return 'user', id
+			return 'USER', id
 		end,
 		function(cmd, id) --default
 			print("Unknown command '%s', press '*' for the menu", cmd)
-			return 'user', id
+			return 'USER', id
 		end,
 	},
 }
 
-deposit = {
+DEPOSIT = {
 	wait = timeout,
 	timeout = function(_, id)
 		print "Aborted due to inactivity."
-		return 'user', id
+		return 'USER', id
 	end,
 
 	card = login,
 
-	barcode = 'deposit',
+	barcode = 'DEPOSIT',
 
 	keyboard = {
 		[''] = function(id)
 			print "Aborted."
-			return 'user', id
+			return 'USER', id
 		end,
 		function(amount, id) --default
 			local n = tonumber(amount)
 			if not n then
 				print("Unable to parse '%s', try again (or press enter to abort):", amount)
-				return 'deposit', id
+				return 'DEPOSIT', id
 			end
 
 			print("Inserting %.2f DKK", n)
@@ -399,7 +399,7 @@ deposit = {
 			"SELECT balance FROM accounts WHERE id = ?", id))
 			print("New balance: %.2f DKK", r[1])
 
-			return 'user', id
+			return 'USER', id
 		end,
 	},
 }
@@ -457,7 +457,7 @@ local function run()
 		return handler(edge, cmd.data, ...)
 	end
 
-	return handle_state('main')
+	return handle_state('MAIN')
 end
 
 clearscreen()
