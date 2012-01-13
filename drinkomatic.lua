@@ -16,39 +16,9 @@ local function clearscreen() rprint "\x1B[1J" end
 local db      = assert(sqlite.open(arg[1] or 'test.db', sqlite.READWRITE))
 local timeout = 30
 
-local input = bqueue.new()
-
 local function exit()
 	utils.exit(1)
 end
-
---- spawn coroutines to read from     ---
---- inputs and add to the input queue ---
-
-utils.spawn(function()
-	local stdin = streams.stdin
-	while true do
-		local line = assert(stdin:read('*l'))
-		input:put{ from = 'keyboard', data = line }
-	end
-end)
-
-utils.spawn(function()
-	local ins = assert(streams.open(arg[2] or 'card', 'r'))
-	local ctx = sha1.new()
-	while true do
-		local line = assert(ins:read('*l', '\r'))
-		input:put{ from = 'card', data = ctx:add(line):add('\r'):hex() }
-	end
-end)
-
-utils.spawn(function()
-	local ins = assert(streams.open(arg[3] or 'barcode', 'r'))
-	while true do
-		local line = assert(ins:read('*l', '\r'))
-		input:put{ from = 'barcode', data = line }
-	end
-end)
 
 --- some helper functions ---
 
@@ -265,7 +235,7 @@ PROD_NEW_PRICE = {
 				return 'PROD_NEW_PRICE', name, code
 			end
 
-			print("Creating new product..");
+			print "Creating new product.."
 
 			local ok, err = db:fetchone("\z
 				INSERT INTO products (barcode, price, name) \z
@@ -455,10 +425,40 @@ DEPOSIT = {
 	},
 }
 
---
--- This is functions reads from the input queue
--- and "runs" the state machine
---
+--- the "engine" ---
+
+-- all input events goes through this queue
+local input = bqueue.new()
+
+-- spawn coroutines to read from
+-- inputs and add to the input queue
+utils.spawn(function()
+	local stdin = streams.stdin
+	while true do
+		local line = assert(stdin:read('*l'))
+		input:put{ from = 'keyboard', data = line }
+	end
+end)
+
+utils.spawn(function()
+	local ins = assert(streams.open(arg[2] or 'card', 'r'))
+	local ctx = sha1.new()
+	while true do
+		local line = assert(ins:read('*l', '\r'))
+		input:put{ from = 'card', data = ctx:add(line):add('\r'):hex() }
+	end
+end)
+
+utils.spawn(function()
+	local ins = assert(streams.open(arg[3] or 'barcode', 'r'))
+	while true do
+		local line = assert(ins:read('*l', '\r'))
+		input:put{ from = 'barcode', data = line }
+	end
+end)
+
+-- this is function reads events from the
+-- input queue and "runs" the state machine
 local function run()
 	local valid_sender = {
 		timeout = true,
