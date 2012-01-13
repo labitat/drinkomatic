@@ -1,0 +1,18 @@
+CREATE TABLE accounts (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	hash VARCHAR(40) UNIQUE,
+	member VARCHAR(60),
+	balance FLOAT
+);
+CREATE TABLE products (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	barcode VARCHAR(40) UNIQUE,
+	price FLOAT,
+	name VARCHAR(255)
+);
+CREATE TABLE purchases (
+	dt VARCHAR(23),
+	product_id INTEGER,
+	account_id INTEGER,
+	amount FLOAT
+);

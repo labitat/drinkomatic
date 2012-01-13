@@ -1,0 +1,13 @@
+#!/bin/sh
+
+set -e
+
+db='/home/drinkomatic/micropay.db'
+card='/dev/ttyS0'
+barcode='/dev/ttyUSB0'
+dir="`dirname $0`"
+
+stty -F"$card" raw -echo -hup 9600
+stty -F"$barcode" raw -echo -hup 9600
+
+exec lem "$dir/drinkomatic.lua" "$db" "$card" "$barcode"
