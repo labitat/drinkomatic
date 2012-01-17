@@ -88,48 +88,6 @@ end
 
 --- declare states ---
 
-IDLE = {
-	card = login,
-
-	barcode = function(code)
-		print(" Price check..")
-
-		local r = assert(db:fetchone(
-			"SELECT name, price FROM products	WHERE barcode = ?", code))
-		if r == true then
-			print " Unknown product."
-			return 'MAIN'
-		end
-
-		product_dump(r)
-		return 'MAIN'
-	end,
-
-	keyboard = {
-		['*'] = function()
-			main_menu()
-			return 'MAIN'
-		end,
-		['1'] = function()
-			print " Please enter user name (or press enter to abort):"
-			return 'NEWUSER_NAME'
-		end,
-		['2'] = function()
-			print(" Scan barcode (or press enter to abort):")
-			return 'PROD_CODE'
-		end,
-		[''] = function()
-			print(" ENTAR!")
-			return 'MAIN'
-		end,
-		function(cmd) --default
-			print(" Unknown command '%s'.", cmd)
-			main_menu()
-			return 'MAIN'
-		end,
-	},
-}
-
 MAIN = {
 	wait = timeout,
 	timeout = idle,
@@ -173,6 +131,12 @@ MAIN = {
 			return 'MAIN'
 		end,
 	},
+}
+
+IDLE = {
+	card     = MAIN.card,
+	barcode  = MAIN.barcode,
+	keyboard = MAIN.keyboard,
 }
 
 NEWUSER_NAME = {
