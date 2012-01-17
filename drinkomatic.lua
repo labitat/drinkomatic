@@ -9,9 +9,6 @@ local bqueue  = require 'bqueue'
 local assert, error  = assert, error
 local type, tostring = type, tostring
 local format = string.format
-local rprint = print
-local function print(...) return rprint(format(...)) end
-local function clearscreen() rprint "\x1B[1J" end
 
 local db      = assert(sqlite.open(arg[1] or 'test.db', sqlite.READWRITE))
 local timeout = 30
@@ -22,6 +19,38 @@ end
 
 --- some helper functions ---
 
+local rprint = print
+local function print(...) return rprint(format(...)) end
+local function clearscreen() rprint "\x1B[1J\x1B[H" end
+
+local function main_menu()
+	print "-------------------------------------------"
+	print "   Swipe card to log in."
+	print "   Scan barcode to check price of product."
+	print ""
+	print " * | Print this menu."
+	print " 1 | Create new account."
+	print " 2 | Update or create new product."
+	print "-------------------------------------------"
+end
+
+local function user_menu()
+	print "-------------------------------------------"
+	print "   Swipe card to switch user."
+	print "   Scan barcode to buy product."
+	print ""
+	print " * | Print this menu."
+	print " 0 | Log out."
+	print " 1 | Add money to card."
+	print "-------------------------------------------"
+end
+
+local function idle()
+	clearscreen()
+	main_menu()
+	return 'IDLE'
+end
+
 local function login(hash, id)
 	local r = assert(db:fetchone("\z
 		SELECT id, member, balance \z
@@ -31,39 +60,44 @@ local function login(hash, id)
 	if r == true then
 		if id then
 			clearscreen()
-			print "Unknown card swiped, logging out.."
+			print " Unknown card swiped, logged out."
+			main_menu()
 		else
-			print "Unknown card swiped.."
+			print " Unknown card swiped.."
 		end
 		return 'MAIN'
 	end
 
+	clearscreen()
 	print("-------------------------------------------")
-	print("Logged in as : %s", r[2])
-	print("Balance      : %.2f DKK", r[3])
-	print("-------------------------------------------")
+	print(" Logged in as : %s", r[2])
+	print(" Balance      : %.2f DKK", r[3])
+	print("")
+	print(" NB. If your name is just numbers,")
+	print("     please tell Esmil to change it.")
+	user_menu()
 	return 'USER', r[1]
 end
 
 local function product_dump(p)
 	print("-------------------------------------------")
-	print("Product : %s", p[1])
-	print("Price   : %.2f DKK", p[2])
+	print(" Product : %s", p[1])
+	print(" Price   : %.2f DKK", p[2])
 	print("-------------------------------------------")
 end
 
 --- declare states ---
 
-MAIN = {
+IDLE = {
 	card = login,
 
 	barcode = function(code)
-		print("Price check..")
+		print(" Price check..")
 
 		local r = assert(db:fetchone(
 			"SELECT name, price FROM products	WHERE barcode = ?", code))
 		if r == true then
-			print "Unknown product."
+			print " Unknown product."
 			return 'MAIN'
 		end
 
@@ -73,30 +107,69 @@ MAIN = {
 
 	keyboard = {
 		['*'] = function()
-			print "-------------------------------------------"
-			print "    Swipe card at any time to log in."
-			print "    Scan barcode to check price of product."
-			print ""
-			print "* | Print this menu."
-			print "1 | Create new account."
-			print "2 | Update or create new product."
-			print "-------------------------------------------"
+			main_menu()
 			return 'MAIN'
 		end,
 		['1'] = function()
-			print "Please enter user name (or press enter to abort):"
+			print " Please enter user name (or press enter to abort):"
 			return 'NEWUSER_NAME'
 		end,
 		['2'] = function()
-			print("Scan barcode (or press enter to abort):")
+			print(" Scan barcode (or press enter to abort):")
 			return 'PROD_CODE'
 		end,
 		[''] = function()
-			print("ENTAR!")
+			print(" ENTAR!")
 			return 'MAIN'
 		end,
 		function(cmd) --default
-			print("Unknown command '%s', press '*' for the menu", cmd)
+			print(" Unknown command '%s'.", cmd)
+			main_menu()
+			return 'MAIN'
+		end,
+	},
+}
+
+MAIN = {
+	wait = timeout,
+	timeout = idle,
+
+	card = login,
+
+	barcode = function(code)
+		print(" Price check..")
+
+		local r = assert(db:fetchone(
+			"SELECT name, price FROM products	WHERE barcode = ?", code))
+		if r == true then
+			print " Unknown product."
+			return 'MAIN'
+		end
+
+		product_dump(r)
+		return 'MAIN'
+	end,
+
+	keyboard = {
+		['*'] = function()
+			main_menu()
+			return 'MAIN'
+		end,
+		['1'] = function()
+			print " Please enter user name (or press enter to abort):"
+			return 'NEWUSER_NAME'
+		end,
+		['2'] = function()
+			print(" Scan barcode (or press enter to abort):")
+			return 'PROD_CODE'
+		end,
+		[''] = function()
+			print(" ENTAR!")
+			return 'MAIN'
+		end,
+		function(cmd) --default
+			print(" Unknown command '%s'.", cmd)
+			main_menu()
 			return 'MAIN'
 		end,
 	},
@@ -105,7 +178,7 @@ MAIN = {
 NEWUSER_NAME = {
 	wait = 120, -- allow 2 minutes for typing account name
 	timeout = function()
-		print "Aborted due to inactivity."
+		print " Aborted due to inactivity."
 		return 'MAIN'
 	end,
 
@@ -115,11 +188,11 @@ NEWUSER_NAME = {
 
 	keyboard = {
 		[''] = function()
-			print "Aborted."
+			print " Aborted."
 			return 'MAIN'
 		end,
 		function(name) --default
-			print("Hello %s! Please swipe your card..", name)
+			print(" Hello %s! Please swipe your card..", name)
 			return 'NEWUSER_HASH', name
 		end,
 	},
@@ -128,19 +201,19 @@ NEWUSER_NAME = {
 NEWUSER_HASH = {
 	wait = timeout,
 	timeout = function()
-		print "Aborted due to inactivity."
+		print " Aborted due to inactivity."
 		return 'MAIN'
 	end,
 
 	card = function(hash, name)
-		print "Card swiped, thank you! Creating account.."
+		print " Card swiped, thank you! Creating account.."
 
 		local ok, err = db:fetchone("\z
 			INSERT INTO accounts (hash, member, balance) \z
 			VALUES (?, ?, 0.0)", hash, name)
 
 		if not ok then
-			print("Error creating account: %s", err)
+			print(" Error creating account: %s", err)
 			return 'MAIN'
 		end
 
@@ -150,7 +223,7 @@ NEWUSER_HASH = {
 	barcode = 'NEWUSER_HASH',
 
 	keyboard = function()
-		print "Aborted."
+		print " Aborted."
 		return 'MAIN'
 	end,
 }
@@ -158,14 +231,14 @@ NEWUSER_HASH = {
 PROD_CODE = {
 	wait = timeout,
 	timeout = function()
-		print "Aborted due to inactivity."
+		print " Aborted due to inactivity."
 		return 'MAIN'
 	end,
 
 	card = login,
 
 	barcode = function(code)
-		print("Scanned: %s", code)
+		print(" Scanned: %s", code)
 
 		local r = assert(db:fetchone("\z
 			SELECT id, name, price \z
@@ -173,18 +246,18 @@ PROD_CODE = {
 			WHERE barcode = ?", code))
 
 		if r == true then
-			print "Not found in database, creating new product."
-			print "Type name of product (or press enter to abort):"
+			print " Not found in database, creating new product."
+			print " Type name of product (or press enter to abort):"
 			return 'PROD_NEW_NAME', code
 		end
 
-		print "Already in database, updating info."
-		print("Type name of product (or press enter to keep '%s'):", r[2])
+		print(" Already in database, updating info.")
+		print(" Type name of product (or press enter to keep '%s'):", r[2])
 		return 'PROD_EDIT_NAME', { id = r[1], name = r[2], price = r[3] }
 	end,
 
 	keyboard = function()
-		print "Aborted."
+		print " Aborted."
 		return 'MAIN'
 	end,
 }
@@ -192,7 +265,7 @@ PROD_CODE = {
 PROD_NEW_NAME = {
 	wait = 120, -- allow 2 minutes for typing product name
 	timeout = function()
-		print "Aborted due to inactivity."
+		print " Aborted due to inactivity."
 		return 'MAIN'
 	end,
 
@@ -202,11 +275,11 @@ PROD_NEW_NAME = {
 
 	keyboard = {
 		[''] = function()
-			print "Aborted."
+			print " Aborted."
 			return 'MAIN'
 		end,
 		function(name, code) --default
-			print "Enter price (or press enter to abort):"
+			print " Enter price (or press enter to abort):"
 			return 'PROD_NEW_PRICE', name, code
 		end,
 	},
@@ -215,7 +288,7 @@ PROD_NEW_NAME = {
 PROD_NEW_PRICE = {
 	wait = timeout,
 	timeout = function()
-		print "Aborted due to inactivity."
+		print " Aborted due to inactivity."
 		return 'MAIN'
 	end,
 
@@ -225,24 +298,24 @@ PROD_NEW_PRICE = {
 
 	keyboard = {
 		[''] = function()
-			print "Aborted."
+			print " Aborted."
 			return 'MAIN'
 		end,
 		function(price, name, code) --default
 			local n = tonumber(price)
 			if not n then
-				print("Unable to parse '%s', try again (or press enter to abort):", price)
+				print(" Unable to parse '%s', try again (or press enter to abort):", price)
 				return 'PROD_NEW_PRICE', name, code
 			end
 
-			print "Creating new product.."
+			print " Creating new product.."
 
 			local ok, err = db:fetchone("\z
 				INSERT INTO products (barcode, price, name) \z
 				VALUES (?, ?, ?)", code, n, name)
 
 			if ok then
-				print("Error creating product: %s", err)
+				print(" Error creating product: %s", err)
 				return 'MAIN'
 			end
 
@@ -256,7 +329,7 @@ PROD_NEW_PRICE = {
 PROD_EDIT_NAME = {
 	wait = 120, -- allow 2 minutes for typing product name
 	timeout = function()
-		print "Aborted due to inactivity."
+		print " Aborted due to inactivity."
 		return 'MAIN'
 	end,
 
@@ -269,7 +342,7 @@ PROD_EDIT_NAME = {
 			product.name = name
 		end
 
-		print("Type new price (or press enter to keep %.2f DKK):", product.price)
+		print(" Type new price (or press enter to keep %.2f DKK):", product.price)
 		return 'PROD_EDIT_PRICE', product
 	end,
 }
@@ -277,7 +350,7 @@ PROD_EDIT_NAME = {
 PROD_EDIT_PRICE = {
 	wait = timeout,
 	timeout = function()
-		print "Aborted due to inactivity."
+		print " Aborted due to inactivity."
 		return 'MAIN'
 	end,
 
@@ -289,13 +362,13 @@ PROD_EDIT_PRICE = {
 		if price ~= '' then
 			local n = tonumber(price)
 			if not n then
-				print("Unable to parse '%s', try again (or press enter to keep %.2f DKK):",
+				print(" Unable to parse '%s', try again (or press enter to keep %.2f DKK):",
 					price, product.price)
 				return 'PROD_EDIT_PRICE', product
 			end
 		end
 
-		print "Updating product.."
+		print " Updating product.."
 
 		local ok, err = db:fetchone("\z
 			UPDATE products \z
@@ -303,7 +376,7 @@ PROD_EDIT_PRICE = {
 			WHERE id = ?", product.name, product.price, product.id)
 
 		if not ok then
-			print("Error updating product: %s", err)
+			print(" Error updating product: %s", err)
 			return 'MAIN'
 		end
 
@@ -315,11 +388,7 @@ PROD_EDIT_PRICE = {
 
 USER = {
 	wait = timeout,
-	timeout = function()
-		clearscreen()
-		print "Logged out due to inactivity."
-		return 'MAIN'
-	end,
+	timeout = idle,
 
 	card = login,
 
@@ -330,14 +399,14 @@ USER = {
 			WHERE barcode = ?", code))
 
 		if r == true then
-			print "Unknown product.."
+			print " Unknown product.."
 			return 'USER', id
 		end
 
 		local pid = r[1]
 		local price = r[3]
 
-		print("Buying %s for %.2f DKK", r[2], price)
+		print(" Buying %s for %.2f DKK", r[2], price)
 
 		assert(db:exec("\z
 			BEGIN; \z
@@ -348,38 +417,28 @@ USER = {
 
 		r = assert(db:fetchone(
 			"SELECT balance FROM accounts WHERE id = ?", id))
-		print("New balance: %.2f DKK", r[1])
+		print(" New balance: %.2f DKK", r[1])
 
 		return 'USER', id
 	end,
 
 	keyboard = {
 		['*'] = function(id)
-			print "-------------------------------------------"
-			print "    Swipe card to switch user."
-			print "    Scan barcode to buy product."
-			print ""
-			print "* | Print this menu."
-			print "0 | Log out."
-			print "1 | Add money to card."
-			print "-------------------------------------------"
+			user_menu()
 			return 'USER', id
 		end,
-		['0'] = function(id)
-			clearscreen()
-			print "Logging out."
-			return 'MAIN'
-		end,
+		['0'] = idle,
 		['1'] = function(id)
-			print "Enter amount (or press enter to abort):"
+			print " Enter amount (or press enter to abort):"
 			return 'DEPOSIT', id
 		end,
 		[''] = function(id)
-			print "ENTAR!"
+			print " ENTAR!"
 			return 'USER', id
 		end,
 		function(cmd, id) --default
-			print("Unknown command '%s', press '*' for the menu", cmd)
+			print(" Unknown command '%s'.", cmd)
+			user_menu()
 			return 'USER', id
 		end,
 	},
@@ -388,7 +447,7 @@ USER = {
 DEPOSIT = {
 	wait = timeout,
 	timeout = function(_, id)
-		print "Aborted due to inactivity."
+		print " Aborted due to inactivity."
 		return 'USER', id
 	end,
 
@@ -398,17 +457,17 @@ DEPOSIT = {
 
 	keyboard = {
 		[''] = function(id)
-			print "Aborted."
+			print " Aborted."
 			return 'USER', id
 		end,
 		function(amount, id) --default
 			local n = tonumber(amount)
 			if not n then
-				print("Unable to parse '%s', try again (or press enter to abort):", amount)
+				print(" Unable to parse '%s', try again (or press enter to abort):", amount)
 				return 'DEPOSIT', id
 			end
 
-			print("Inserting %.2f DKK", n)
+			print(" Inserting %.2f DKK", n)
 			assert(db:fetchone("\z
 				UPDATE accounts \z
 				SET balance = balance + ? \z
@@ -416,7 +475,7 @@ DEPOSIT = {
 
 			r = assert(db:fetchone(
 			"SELECT balance FROM accounts WHERE id = ?", id))
-			print("New balance: %.2f DKK", r[1])
+			print(" New balance: %.2f DKK", r[1])
 
 			return 'USER', id
 		end,
@@ -457,7 +516,7 @@ end)
 
 -- this is function reads events from the
 -- input queue and "runs" the state machine
-local function run()
+local function run(...)
 	local valid_sender = {
 		timeout = true,
 		card = true,
@@ -510,10 +569,9 @@ local function run()
 		return handler(edge, cmd.data, ...)
 	end
 
-	return handle_state('MAIN')
+	return handle_state(...)
 end
 
-clearscreen()
-return run()
+return run(idle())
 
 -- vim: set ts=2 sw=2 noet:
