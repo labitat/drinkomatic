@@ -38,9 +38,9 @@ local function user_menu()
 	print "-------------------------------------------"
 	print "   Swipe card to switch user."
 	print "   Scan barcode to buy product."
+	print "   Press enter to log out."
 	print ""
 	print " * | Print this menu."
-	print " 0 | Log out."
 	print " 1 | Add money to card."
 	print "-------------------------------------------"
 end
@@ -391,15 +391,11 @@ USER = {
 			user_menu()
 			return 'USER', id
 		end,
-		['0'] = idle,
 		['1'] = function(id)
 			print " Enter amount (or press enter to abort):"
 			return 'DEPOSIT', id
 		end,
-		[''] = function(id)
-			print " ENTAR!"
-			return 'USER', id
-		end,
+		[''] = idle,
 		function(cmd, id) --default
 			print(" Unknown command '%s'.", cmd)
 			user_menu()
