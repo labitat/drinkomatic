@@ -278,7 +278,7 @@ PROD_NEW_PRICE = {
 				INSERT INTO products (barcode, price, name) \z
 				VALUES (?, ?, ?)", code, n, name)
 
-			if ok then
+			if not ok then
 				print(" Error creating product: %s", err)
 				return 'MAIN'
 			end
