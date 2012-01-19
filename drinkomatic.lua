@@ -377,7 +377,7 @@ USER = {
 			UPDATE accounts SET balance = balance - @price WHERE id = @id; \z
 			INSERT INTO purchases (dt, product_id, account_id, amount) \z
 				VALUES (datetime('now'), @pid, @id, @price); \z
-			COMMIT", { ['@id'] = id, ['@pid'] = pid, ['@price'] = price }))
+			COMMIT", { id = id, pid = pid, price = price }))
 
 		r = assert(db:fetchone(
 			"SELECT balance FROM accounts WHERE id = ?", id))
