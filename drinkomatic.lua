@@ -41,7 +41,8 @@ local function user_menu()
 	print "   Press enter to log out."
 	print ""
 	print " * | Print this menu."
-	print " 1 | Add money to card."
+	print " 1 | Add money to account."
+	print " 2 | Switch card."
 	print "-------------------------------------------"
 end
 
@@ -95,7 +96,7 @@ MAIN = {
 	card = login,
 
 	barcode = function(code)
-		print(" Price check..")
+		print " Price check.."
 
 		local r = assert(db:fetchone(
 			"SELECT name, price FROM products	WHERE barcode = ?", code))
@@ -395,6 +396,10 @@ USER = {
 			print " Enter amount (or press enter to abort):"
 			return 'DEPOSIT', id
 		end,
+		['2'] = function(id)
+			print " Swipe new card (or press enter to abort):"
+			return 'SWITCH_CARD', id
+		end,
 		[''] = idle,
 		function(cmd, id) --default
 			print(" Unknown command '%s'.", cmd)
@@ -440,6 +445,34 @@ DEPOSIT = {
 			return 'USER', id
 		end,
 	},
+}
+
+SWITCH_CARD = {
+	wait = timeout,
+	timeout = function(_, id)
+		print " Aborted due to inactivity."
+		return 'USER', id
+	end,
+
+	card = function(hash, id)
+		print "Updating hash.."
+		local ok, err = db:fetchone(
+			"UPDATE accounts SET hash = ? WHERE id = ?", hash, id)
+		if not ok then
+			print("Error updating hash: %s", err)
+		else
+			print("Done.")
+		end
+
+		return 'USER', id
+	end,
+
+	barcode = 'SWITCH_CARD',
+
+	keyboard = function(_, id)
+		print " Aborted."
+		return 'USER', id
+	end,
 }
 
 --- the "engine" ---
