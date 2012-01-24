@@ -331,6 +331,7 @@ PROD_EDIT_PRICE = {
 					price, product.price)
 				return 'PROD_EDIT_PRICE', product
 			end
+			product.price = n
 		end
 
 		print " Updating product.."
