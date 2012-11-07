@@ -4,12 +4,9 @@ CREATE TABLE users (
 	hash VARCHAR(40) UNIQUE,
 	balance FLOAT
 );
-CREATE TABLE products (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	barcode VARCHAR(40) UNIQUE,
-	price FLOAT,
-	name VARCHAR(255)
-);
+INSERT INTO users SELECT id, member, hash, balance FROM accounts;
+DROP TABLE accounts;
+
 CREATE TABLE log (
 	dt VARCHAR(23),
 	uid INTEGER,
@@ -17,3 +14,5 @@ CREATE TABLE log (
 	count INTEGER,
 	price FLOAT
 );
+INSERT INTO log SELECT dt, account_id, product_id, 1, amount FROM purchases;
+DROP TABLE purchases;

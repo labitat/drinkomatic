@@ -54,8 +54,8 @@ end
 
 local function login(hash, id)
 	local r = assert(db:fetchone("\z
-		SELECT id, member, balance \z
-		FROM accounts \z
+		SELECT id, name, balance \z
+		FROM users \z
 		WHERE hash = ?", hash))
 
 	if r == true then
@@ -174,8 +174,8 @@ NEWUSER_HASH = {
 		print " Card swiped, thank you! Creating account.."
 
 		local ok, err = db:fetchone("\z
-			INSERT INTO accounts (hash, member, balance) \z
-			VALUES (?, ?, 0.0)", hash, name)
+			INSERT INTO users (name, hash, balance) \z
+			VALUES (?, ?, 0.0)", name, hash)
 
 		if not ok then
 			print(" Error creating account: %s", err)
@@ -376,13 +376,13 @@ USER = {
 
 		assert(db:exec("\z
 			BEGIN; \z
-			UPDATE accounts SET balance = balance - @price WHERE id = @id; \z
-			INSERT INTO purchases (dt, product_id, account_id, amount) \z
-				VALUES (datetime('now'), @pid, @id, @price); \z
+			UPDATE users SET balance = balance - @price WHERE id = @id; \z
+			INSERT INTO log (dt, uid, pid, count, price) \z
+				VALUES (datetime('now'), @id, @pid, 1, @price); \z
 			COMMIT", { id = id, pid = pid, price = price }))
 
 		r = assert(db:fetchone(
-			"SELECT balance FROM accounts WHERE id = ?", id))
+			"SELECT balance FROM users WHERE id = ?", id))
 		print(" New balance: %.2f DKK", r[1])
 
 		return 'USER', id
@@ -435,12 +435,12 @@ DEPOSIT = {
 
 			print(" Inserting %.2f DKK", n)
 			assert(db:fetchone("\z
-				UPDATE accounts \z
+				UPDATE users \z
 				SET balance = balance + ? \z
 				WHERE id = ?", n, id))
 
 			r = assert(db:fetchone(
-			"SELECT balance FROM accounts WHERE id = ?", id))
+			"SELECT balance FROM users WHERE id = ?", id))
 			print(" New balance: %.2f DKK", r[1])
 
 			return 'USER', id
@@ -458,7 +458,7 @@ SWITCH_CARD = {
 	card = function(hash, id)
 		print "Updating hash.."
 		local ok, err = db:fetchone(
-			"UPDATE accounts SET hash = ? WHERE id = ?", hash, id)
+			"UPDATE users SET hash = ? WHERE id = ?", hash, id)
 		if not ok then
 			print("Error updating hash: %s", err)
 		else
