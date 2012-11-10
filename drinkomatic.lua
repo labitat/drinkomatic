@@ -28,9 +28,9 @@ local function main_menu()
 	print "   Swipe card to log in."
 	print "   Scan barcode to check price of product."
 	print ""
-	print " * | Print this menu."
-	print " 1 | Create new account."
-	print " 2 | Update or create new product."
+	print "  1  | Create new account."
+	print "  2  | Update or create new product."
+	print "  -  | Print this menu."
 	print "-------------------------------------------"
 end
 
@@ -40,9 +40,10 @@ local function user_menu()
 	print "   Scan barcode to buy product."
 	print "   Press enter to log out."
 	print ""
-	print " * | Print this menu."
-	print " 1 | Add money to account."
-	print " 2 | Switch card."
+	print "  /  | Add money to account."
+	print "  *  | Switch card."
+	print " <n> | Buy <n> items."
+	print "  -  | Print this menu."
 	print "-------------------------------------------"
 end
 
@@ -110,10 +111,6 @@ MAIN = {
 	end,
 
 	keyboard = {
-		['*'] = function()
-			main_menu()
-			return 'MAIN'
-		end,
 		['1'] = function()
 			print " Please enter user name (or press enter to abort):"
 			return 'NEWUSER_NAME'
@@ -121,6 +118,10 @@ MAIN = {
 		['2'] = function()
 			print(" Scan barcode (or press enter to abort):")
 			return 'PROD_CODE'
+		end,
+		['-'] = function()
+			main_menu()
+			return 'MAIN'
 		end,
 		[''] = function()
 			print(" ENTAR!")
@@ -358,7 +359,7 @@ USER = {
 
 	card = login,
 
-	barcode = function(code, id)
+	barcode = function(code, id, count)
 		local r = assert(db:fetchone("\z
 			SELECT id, name, price \z
 			FROM products \z
@@ -372,14 +373,20 @@ USER = {
 		local pid = r[1]
 		local price = r[3]
 
-		print(" Buying %s for %.2f DKK", r[2], price)
+		if count then
+			print(" Buying %s for %d * %.2f = %.2f DKK",
+				r[2], count, price, count * price)
+		else
+			print(" Buying %s for %.2f DKK", r[2], price)
+			count = 1
+		end
 
 		assert(db:exec("\z
 			BEGIN; \z
-			UPDATE users SET balance = balance - @price WHERE id = @id; \z
+			UPDATE users SET balance = balance - @count * @price WHERE id = @id; \z
 			INSERT INTO log (dt, uid, pid, count, price) \z
-				VALUES (datetime('now'), @id, @pid, 1, @price); \z
-			COMMIT", { id = id, pid = pid, price = price }))
+				VALUES (datetime('now'), @id, @pid, @count, @price); \z
+			COMMIT", { id = id, pid = pid, count = count, price = price }))
 
 		r = assert(db:fetchone(
 			"SELECT balance FROM users WHERE id = ?", id))
@@ -389,20 +396,38 @@ USER = {
 	end,
 
 	keyboard = {
-		['*'] = function(id)
-			user_menu()
-			return 'USER', id
-		end,
-		['1'] = function(id)
+		['/'] = function(id)
 			print " Enter amount (or press enter to abort):"
 			return 'DEPOSIT', id
 		end,
-		['2'] = function(id)
+		['*'] = function(id)
 			print " Swipe new card (or press enter to abort):"
 			return 'SWITCH_CARD', id
 		end,
-		[''] = idle,
+		['-'] = function(id)
+			user_menu()
+			return 'USER', id
+		end,
+		['n'] = function(id)
+			print " Sigh. A number. That is [1-9][0-9]*"
+			return 'USER', id
+		end,
+		[''] = function(id, count)
+			if count then
+				print " Aborted."
+				return 'USER', id
+			end
+
+			return idle()
+		end,
 		function(cmd, id) --default
+			local count = tonumber(cmd)
+			if count then
+				print(" Buying %d of the next thing scanned. Press ENTER to abort.",
+					count)
+				return 'USER', id, count
+			end
+
 			print(" Unknown command '%s'.", cmd)
 			user_menu()
 			return 'USER', id
