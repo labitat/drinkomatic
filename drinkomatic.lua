@@ -32,6 +32,11 @@ local function main_menu()
 	print "  2  | Update or create new product."
 	print "  -  | Print this menu."
 	print "-------------------------------------------"
+
+	local r = assert(db:fetchone(
+		"SELECT SUM(balance)/COUNT(1), MIN(balance) FROM users"))
+	print(" Average balance:     %16.2f DKK", r[1])
+	print(" Largest single debt: %16.2f DKK", r[2])
 end
 
 local function user_menu()
