@@ -465,8 +465,8 @@ DEPOSIT = {
 				SET balance = balance + ? \z
 				WHERE id = ?", n, id))
 
-			r = assert(db:fetchone(
-			"SELECT balance FROM users WHERE id = ?", id))
+			local r = assert(db:fetchone(
+				"SELECT balance FROM users WHERE id = ?", id))
 			print(" New balance: %.2f DKK", r[1])
 
 			return 'USER', id
