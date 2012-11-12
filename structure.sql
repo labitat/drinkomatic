@@ -4,12 +4,15 @@ CREATE TABLE users (
 	hash VARCHAR(40) UNIQUE,
 	balance FLOAT
 );
+
 CREATE TABLE products (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	barcode VARCHAR(40) UNIQUE,
 	price FLOAT,
 	name VARCHAR(255)
 );
+INSERT INTO products VALUES (1,NULL,NULL,'Deposit');
+
 CREATE TABLE log (
 	dt VARCHAR(23),
 	uid INTEGER,

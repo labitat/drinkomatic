@@ -460,10 +460,12 @@ DEPOSIT = {
 			end
 
 			print(" Inserting %.2f DKK", n)
-			assert(db:fetchone("\z
-				UPDATE users \z
-				SET balance = balance + ? \z
-				WHERE id = ?", n, id))
+			assert(db:exec("\z
+				BEGIN; \z
+				UPDATE users SET balance = balance + @amount WHERE id = @id; \z
+				INSERT INTO log (dt, uid, pid, count, price) \z
+					VALUES (datetime('now'), @id, 1, 1, @amount); \z
+				COMMIT", { id = id, amount = n }))
 
 			local r = assert(db:fetchone(
 				"SELECT balance FROM users WHERE id = ?", id))
