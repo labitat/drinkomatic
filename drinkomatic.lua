@@ -13,10 +13,6 @@ local format = string.format
 local db      = assert(sqlite.open(arg[1] or 'test.db', sqlite.READWRITE))
 local timeout = 30
 
-local function exit()
-	utils.exit(1)
-end
-
 --- some helper functions ---
 
 local rprint = print
