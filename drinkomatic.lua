@@ -15,6 +15,28 @@ local timeout = 30
 
 --- some helper functions ---
 
+function string.utf8trim(str, len)
+	local chars, i, n = 0, 1, #str
+	while i <= n do
+		local c = str:byte(i)
+		if     c >= 252 then i = i + 5
+		elseif c >= 248 then i = i + 4
+		elseif c >= 240 then i = i + 3
+		elseif c >= 224 then i = i + 2
+		elseif c >= 192 then i = i + 1
+		end
+
+		chars = chars + 1
+		if chars == len  then
+			return str:sub(1, i)
+		end
+
+		i = i + 1
+	end
+
+	return str .. (' '):rep(len - chars)
+end
+
 local rprint = print
 local function print(...) return rprint(format(...)) end
 local function clearscreen() rprint "\x1B[1J\x1B[H" end
@@ -43,6 +65,7 @@ local function user_menu()
 	print ""
 	print "  /  | Add money to account."
 	print "  *  | Switch card."
+	print "  +  | Show my log."
 	print " <n> | Buy <n> items."
 	print "  -  | Print this menu."
 	print "-------------------------------------------"
@@ -404,6 +427,26 @@ USER = {
 		['*'] = function(id)
 			print " Swipe new card (or press enter to abort):"
 			return 'SWITCH_CARD', id
+		end,
+		['+'] = function(id)
+			local r = assert(db:fetchall("\z
+				SELECT substr(dt,6,11), ifnull(products.name,'<deleted>'), \z
+					log.count, log.price, log.count * log.price \z
+				FROM log LEFT JOIN products ON pid = products.id \z
+				WHERE uid = ? ORDER BY dt DESC LIMIT 38", id))
+
+			for i = #r, 1, -1 do
+				local row = r[i]
+				if row[3] == 1 then
+					print("%s %s = %8.2f DKK",
+						row[1], row[2]:utf8trim(36), row[5])
+				else
+					print("%s %s %4d * %6.2f = %8.2f DKK",
+						row[1], row[2]:utf8trim(22), row[3], row[4], row[5])
+				end
+			end
+
+			return 'USER', id
 		end,
 		['-'] = function(id)
 			user_menu()
