@@ -44,7 +44,7 @@ function BQueue:get(timeout)
 	return remove(self, 1)
 end
 
-local setmetatable, newsleeper = setmetatable, utils.sleeper
+local setmetatable, newsleeper = setmetatable, utils.newsleeper
 
 local function new()
 	return setmetatable({
