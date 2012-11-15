@@ -48,7 +48,7 @@ local function main_menu()
 	print ""
 	print "  1  | Create new account."
 	print "  2  | Update or create new product."
-	print "  -  | Print this menu."
+	print "  .  | Print this menu."
 	print "-------------------------------------------"
 
 	local r = assert(db:fetchone(
@@ -63,11 +63,12 @@ local function user_menu()
 	print "   Scan barcode to buy product."
 	print "   Press enter to log out."
 	print ""
-	print "  /  | Add money to account."
-	print "  *  | Switch card."
-	print "  +  | Show my log."
+	print "  /  | Switch card."
+	print "  *  | Show my log."
+	print "  +  | Add money to account."
+	print "  -  | Transfer money."
 	print " <n> | Buy <n> items."
-	print "  -  | Print this menu."
+	print "  .  | Print this menu."
 	print "-------------------------------------------"
 end
 
@@ -143,7 +144,7 @@ MAIN = {
 			print(" Scan barcode (or press enter to abort):")
 			return 'PROD_CODE'
 		end,
-		['-'] = function()
+		['.'] = function()
 			main_menu()
 			return 'MAIN'
 		end,
@@ -407,10 +408,10 @@ USER = {
 
 		assert(db:exec("\z
 			BEGIN; \z
-			UPDATE users SET balance = balance - @count * @price WHERE id = @id; \z
-			INSERT INTO log (dt, uid, pid, count, price) \z
-				VALUES (datetime('now'), @id, @pid, @count, @price); \z
-			COMMIT", { id = id, pid = pid, count = count, price = price }))
+			UPDATE users SET balance = balance - @count * @amount WHERE id = @id; \z
+			INSERT INTO log (dt, uid, oid, count, amount) \z
+				VALUES (datetime('now'), @id, @oid, @count, @amount); \z
+			COMMIT", { id = id, oid = pid, count = count, amount = price }))
 
 		r = assert(db:fetchone(
 			"SELECT balance FROM users WHERE id = ?", id))
@@ -421,34 +422,47 @@ USER = {
 
 	keyboard = {
 		['/'] = function(id)
-			print " Enter amount (or press enter to abort):"
-			return 'DEPOSIT', id
-		end,
-		['*'] = function(id)
 			print " Swipe new card (or press enter to abort):"
 			return 'SWITCH_CARD', id
 		end,
-		['+'] = function(id)
+		['*'] = function(id)
 			local r = assert(db:fetchall("\z
-				SELECT substr(dt,6,11), ifnull(products.name,'<deleted>'), \z
-					log.count, log.price, log.count * log.price \z
-				FROM log LEFT JOIN products ON pid = products.id \z
-				WHERE uid = ? ORDER BY dt DESC LIMIT 38", id))
+				SELECT substr(dt,6,11), \z
+					CASE \z
+						WHEN count NOT NULL THEN oname \z
+						WHEN oid <> ?1 THEN 'Transfer to ' || oname \z
+						WHEN uid <> ?1 THEN 'Transfer from ' || uname \z
+						WHEN amount >= 0 THEN 'Deposit' \z
+						ELSE 'Withdrawal' END, \z
+					CASE WHEN count NOT NULL THEN count \z
+						WHEN oid <> ?1 THEN 1 ELSE -1 END, \z
+					amount \z
+				FROM full_log \z
+				WHERE uid = ?1 OR (count IS NULL AND oid = ?1) \z
+				ORDER BY dt DESC LIMIT 38", id))
 
 			for i = #r, 1, -1 do
 				local row = r[i]
-				if row[3] == 1 then
-					print("%s %s = %8.2f DKK",
-						row[1], row[2]:utf8trim(36), row[5])
+				if row[3] == 1 or row[3] == -1 then
+					print("%s %s   %8.2f DKK",
+						row[1], row[2]:utf8trim(36), -row[3]*row[4])
 				else
-					print("%s %s %4d * %6.2f = %8.2f DKK",
-						row[1], row[2]:utf8trim(22), row[3], row[4], row[5])
+					print("%s %s %4d * %6.2f   %8.2f DKK",
+						row[1], row[2]:utf8trim(22), row[3], row[4], -row[3]*row[4])
 				end
 			end
 
 			return 'USER', id
 		end,
+		['+'] = function(id)
+			print " Enter amount (or press enter to abort):"
+			return 'DEPOSIT', id
+		end,
 		['-'] = function(id)
+			print " Enter user id (or press enter for user list):"
+			return 'TRANSFER_LIST', id, 0
+		end,
+		['.'] = function(id)
 			user_menu()
 			return 'USER', id
 		end,
@@ -474,46 +488,6 @@ USER = {
 
 			print(" Unknown command '%s'.", cmd)
 			user_menu()
-			return 'USER', id
-		end,
-	},
-}
-
-DEPOSIT = {
-	wait = timeout,
-	timeout = function(_, id)
-		print " Aborted due to inactivity."
-		return 'USER', id
-	end,
-
-	card = login,
-
-	barcode = 'DEPOSIT',
-
-	keyboard = {
-		[''] = function(id)
-			print " Aborted."
-			return 'USER', id
-		end,
-		function(amount, id) --default
-			local n = tonumber(amount)
-			if not n then
-				print(" Unable to parse '%s', try again (or press enter to abort):", amount)
-				return 'DEPOSIT', id
-			end
-
-			print(" Inserting %.2f DKK", n)
-			assert(db:exec("\z
-				BEGIN; \z
-				UPDATE users SET balance = balance + @amount WHERE id = @id; \z
-				INSERT INTO log (dt, uid, pid, count, price) \z
-					VALUES (datetime('now'), @id, 1, 1, @amount); \z
-				COMMIT", { id = id, amount = n }))
-
-			local r = assert(db:fetchone(
-				"SELECT balance FROM users WHERE id = ?", id))
-			print(" New balance: %.2f DKK", r[1])
-
 			return 'USER', id
 		end,
 	},
@@ -545,6 +519,148 @@ SWITCH_CARD = {
 		print " Aborted."
 		return 'USER', id
 	end,
+}
+
+DEPOSIT = {
+	wait = timeout,
+	timeout = function(_, id)
+		print " Aborted due to inactivity."
+		return 'USER', id
+	end,
+
+	card = login,
+
+	barcode = 'DEPOSIT',
+
+	keyboard = {
+		[''] = function(id)
+			print " Aborted."
+			return 'USER', id
+		end,
+		function(amount, id) --default
+			local n = tonumber(amount)
+			if not n then
+				print(" Unable to parse '%s', try again (or press enter to abort):", amount)
+				return 'DEPOSIT', id
+			end
+			if n >= 0 then
+				print(" Inserting %.2f DKK", n)
+			else
+				print(" Withdrawing %.2f DKK", -n)
+			end
+
+			assert(db:exec("\z
+				BEGIN; \z
+				UPDATE users SET balance = balance + @amount WHERE id = @id; \z
+				INSERT INTO log (dt, uid, oid, count, amount) \z
+					VALUES (datetime('now'), @id, @id, NULL, @amount); \z
+				COMMIT", { id = id, amount = n }))
+
+			local r = assert(db:fetchone(
+				"SELECT balance FROM users WHERE id = ?", id))
+			print(" New balance: %.2f DKK", r[1])
+
+			return 'USER', id
+		end,
+	},
+}
+
+TRANSFER_LIST = {
+	wait = timeout,
+	timeout = function(_, id)
+		print " Aborted due to inactivity."
+		return 'USER', id
+	end,
+
+	card = login,
+
+	barcode = 'TRANSFER_LIST',
+
+	keyboard = {
+		[''] = function(id, offset)
+			local r = assert(db:fetchall(
+				"SELECT id, name FROM users ORDER BY id LIMIT 39 OFFSET ?", offset))
+			local n = #r
+			if n == 0 then
+				print " Aborted."
+				return 'USER', id
+			end
+
+			for i = 1, n < 39 and n or 38 do
+				local row = r[i]
+				print(" %4d) %s", row[1], row[2])
+			end
+
+			if n < 39 then
+				print " Enter user id (or press enter to abort):"
+			else
+				print " Enter user id (or press enter to continue list):"
+			end
+			return 'TRANSFER_LIST', id, offset + 38
+		end,
+		function(cmd, id) --default
+			local n = tonumber(cmd)
+			if not n then
+				print(" Unable to parse '%s', aborted.", cmd)
+				return 'USER', id
+			end
+
+			local r = assert(db:fetchone(
+				"SELECT name FROM users WHERE id = ?", n))
+			if r == true then
+				print(" No such user. Aborted.")
+				return 'USER', id
+			end
+
+			print(" Enter amount to transfer to %s (or press enter to abort):", r[1])
+			return 'TRANSFER_AMOUNT', id, n
+		end,
+	},
+}
+
+TRANSFER_AMOUNT = {
+	wait = timeout,
+	timeout = function(_, id)
+		print " Aborted due to inactivity."
+		return 'USER', id
+	end,
+
+	card = login,
+
+	barcode = 'TRANSFER_AMOUNT',
+
+	keyboard = {
+		[''] = function(id)
+			print " Aborted."
+			return 'USER', id
+		end,
+		function(cmd, id, oid) --default
+			local n = tonumber(cmd)
+			if not n then
+				print(" Unable to parse '%s', aborted.", cmd)
+				return 'USER', id
+			end
+
+			if n <= 0 then
+				print " Fark you.. Aborted."
+				return 'USER', id
+			end
+
+			assert(db:exec("\z
+				BEGIN; \z
+				UPDATE users SET balance = balance - @amount WHERE id = @id; \z
+				UPDATE users SET balance = balance + @amount WHERE id = @oid; \z
+				INSERT INTO log (dt, uid, oid, count, amount) \z
+					VALUES (datetime('now'), @id, @oid, NULL, @amount); \z
+				COMMIT", { id = id, oid = oid, amount = n }))
+
+			r = assert(db:fetchone(
+				"SELECT balance FROM users WHERE id = ?", id))
+			print(" New balance: %.2f DKK", r[1])
+
+			return 'USER', id
+		end,
+	},
 }
 
 --- the "engine" ---

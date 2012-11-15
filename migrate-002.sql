@@ -1,24 +1,17 @@
-CREATE TABLE "users" (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	name VARCHAR(60),
-	hash VARCHAR(40) UNIQUE,
-	balance FLOAT
-);
-
-CREATE TABLE "products" (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	barcode VARCHAR(40) UNIQUE,
-	price FLOAT,
-	name VARCHAR(255)
-);
-
-CREATE TABLE "log" (
+CREATE TABLE tmp (
 	dt VARCHAR(23),
 	uid INTEGER,
 	oid INTEGER,
 	count INTEGER,
 	amount FLOAT
 );
+INSERT INTO tmp SELECT dt, uid, pid, count, price FROM log;
+DROP TABLE log;
+ALTER TABLE tmp RENAME TO log;
+
+UPDATE log SET count = NULL WHERE oid = 1;
+UPDATE log SET oid = uid WHERE count IS NULL;
+DELETE FROM products WHERE id = 1;
 
 CREATE VIEW "full_log" AS SELECT
 		dt, uid, oid,
