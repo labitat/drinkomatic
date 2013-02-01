@@ -1,16 +1,16 @@
 #!/usr/bin/env lem
 
-local sha1    = require 'sha1'
 local utils   = require 'lem.utils'
-local streams = require 'lem.streams'
+local io      = require 'lem.io'
+local sha1    = require 'sha1'
 local sqlite  = require 'lem.sqlite3'
 local bqueue  = require 'bqueue'
 
 local assert, error  = assert, error
 local type, tostring = type, tostring
-local format = string.format
+local write, format = io.write, string.format
 
-local db      = assert(sqlite.open(arg[1] or 'test.db', sqlite.READWRITE))
+local db = assert(sqlite.open(arg[1] or 'test.db', sqlite.READWRITE))
 local timeout = 30
 
 --- some helper functions ---
@@ -37,9 +37,12 @@ function string.utf8trim(str, len)
 	return str .. (' '):rep(len - chars)
 end
 
-local rprint = print
-local function print(...) return rprint(format(...)) end
-local function clearscreen() rprint "\x1B[1J\x1B[H" end
+local function print(...)
+	return write(format(...), '\n')
+end
+local function clearscreen()
+	return write "\x1B[1J\x1B[H"
+end
 
 local function main_menu()
 	print "-------------------------------------------"
@@ -671,7 +674,7 @@ local input = bqueue.new()
 -- spawn coroutines to read from
 -- inputs and add to the input queue
 utils.spawn(function()
-	local stdin = streams.stdin
+	local stdin = io.stdin
 	while true do
 		local line = assert(stdin:read('*l'))
 		input:put{ from = 'keyboard', data = line }
@@ -679,7 +682,7 @@ utils.spawn(function()
 end)
 
 utils.spawn(function()
-	local ins = assert(streams.open(arg[2] or 'card', 'r'))
+	local ins = assert(io.open(arg[2] or 'card', 'r'))
 	local ctx = sha1.new()
 	while true do
 		local line = assert(ins:read('*l', '\r'))
@@ -688,7 +691,7 @@ utils.spawn(function()
 end)
 
 utils.spawn(function()
-	local ins = assert(streams.open(arg[3] or 'barcode', 'r'))
+	local ins = assert(io.open(arg[3] or 'barcode', 'r'))
 	while true do
 		local line = assert(ins:read('*l', '\r'))
 		input:put{ from = 'barcode', data = line }
