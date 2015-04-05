@@ -451,7 +451,7 @@ USER = {
 				local row = r[i]
 				if row[3] == 1 or row[3] == -1 then
 					print("%s %s   %8.2f DKK",
-						row[1], row[2]:utf8trim(36), -row[3]*row[4])
+						row[1], row[2]:utf8trim(23), -row[3]*row[4])
 				else
 					print("%s %s %4d * %6.2f   %8.2f DKK",
 						row[1], row[2]:utf8trim(22), row[3], row[4], -row[3]*row[4])
@@ -585,7 +585,7 @@ TRANSFER_LIST = {
 	keyboard = {
 		[''] = function(id, offset)
 			local r = assert(db:fetchall(
-				"SELECT id, name FROM users ORDER BY id LIMIT 39 OFFSET ?", offset))
+				"SELECT id, name FROM users ORDER BY id LIMIT 29 OFFSET ?", offset))
 			local n = #r
 			if n == 0 then
 				print " Aborted."
@@ -602,7 +602,7 @@ TRANSFER_LIST = {
 			else
 				print " Enter user id (or press enter to continue list):"
 			end
-			return 'TRANSFER_LIST', id, offset + 38
+			return 'TRANSFER_LIST', id, offset + 29
 		end,
 		function(cmd, id) --default
 			local n = tonumber(cmd)
