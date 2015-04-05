@@ -56,8 +56,11 @@ local function main_menu()
 
 	local r = assert(db:fetchone(
 		"SELECT SUM(balance)/COUNT(1), MIN(balance) FROM users"))
+	local s = assert(db:fetchone(
+		"SELECT SUM(balance) FROM users WHERE balance < 0"))
 	print(" Average balance:     %16.2f DKK", r[1])
 	print(" Largest single debt: %16.2f DKK", r[2])
+	print(" Total debt:          %16.2f DKK", s[1])
 end
 
 local function user_menu()
