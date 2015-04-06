@@ -51,6 +51,7 @@ local function main_menu()
 	print ""
 	print "  1  | Create new account."
 	print "  2  | Update or create new product."
+	print " /<p>| Check price for the product <p>."
 	print "  .  | Print this menu."
 	print "-------------------------------------------"
 
@@ -74,6 +75,7 @@ local function user_menu()
 	print "  +  | Add money to account."
 	print "  -  | Transfer money."
 	print " <n> | Buy <n> items."
+	print " /<p>| Buy the product <p>."
 	print "  .  | Print this menu."
 	print "-------------------------------------------"
 end
@@ -147,7 +149,7 @@ MAIN = {
 			return 'NEWUSER_NAME'
 		end,
 		['2'] = function()
-			print(" Scan barcode (or press enter to abort):")
+			print(" Scan barcode (or /<barcode>, or press enter to abort):")
 			return 'PROD_CODE'
 		end,
 		['.'] = function()
@@ -159,6 +161,9 @@ MAIN = {
 			return 'MAIN'
 		end,
 		function(cmd) --default
+			if cmd:sub(1,1) == '/' then
+				return (MAIN['barcode'])(cmd:sub(2))
+			end
 			print(" Unknown command '%s'.", cmd)
 			main_menu()
 			return 'MAIN'
@@ -253,7 +258,10 @@ PROD_CODE = {
 		return 'PROD_EDIT_NAME', { id = r[1], name = r[2], price = r[3] }
 	end,
 
-	keyboard = function()
+	keyboard = function(entry)
+		if entry:sub(1,1) == '/' then
+			return (PROD_CODE['barcode'])(entry:sub(2))
+		end
 		print " Aborted."
 		return 'MAIN'
 	end,
@@ -484,7 +492,10 @@ USER = {
 
 			return idle()
 		end,
-		function(cmd, id) --default
+		function(cmd, id, count) --default
+			if cmd:sub(1,1) == '/' then
+				return (USER['barcode'])(cmd:sub(2), id, count)
+			end
 			local count = tonumber(cmd)
 			if count then
 				print(" Buying %d of the next thing scanned. Press ENTER to abort.",
